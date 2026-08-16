@@ -94,26 +94,29 @@ applications:
     directory: /opt/apps/lms
     compose_file: docker-compose.yml
     internal_port: 8082
-    health_url: http://127.0.0.1:8082/api/health
+    health_url: http://127.0.0.1:8082/
     launch_path: "http://159.195.113.105:8082"
     subdomain: "lms"
     startup_timeout: 180
     idle_timeout_seconds: 1800 # 30 minutes
     enabled: true
     test_credentials:
-      username: "student_demo@lms.local"
-      password: "LearnPass2026!"
-      role: "Instructor / Student"
-      notes: "Access to all published courses, quizzes, and certification modules."
+      username: "admin@admin.com"
+      password: "!23QWEasd"
+      role: "Administrator"
+      notes: "Full admin access to all published courses, quizzes, and certification modules."
     containers:
-      - lms_db
+      - lms_postgres
       - lms_redis
-      - lms_backend
+      - lms_minio
+      - lms_api
+      - lms_worker
       - lms_frontend
+      - lms_nginx
     startup_stages:
-      - key: database
+      - key: postgres
         name: PostgreSQL Database
-        service: lms_db
+        service: lms_postgres
         description: Initializing LMS student and course records
         check_type: docker_health
         timeout: 30
@@ -123,16 +126,28 @@ applications:
         description: Session caching and media streaming buffer
         check_type: docker_health
         timeout: 20
-      - key: backend
+      - key: minio
+        name: MinIO Object Storage
+        service: lms_minio
+        description: Starting S3 media bucket store
+        check_type: docker_health
+        timeout: 20
+      - key: api
         name: LMS API Service
-        service: lms_backend
+        service: lms_api
         description: Starting course delivery engine and grading API
         check_type: http_get
-        endpoint: http://127.0.0.1:8082/api/health
+        endpoint: http://127.0.0.1:8082/
         timeout: 45
+      - key: worker
+        name: Celery Background Worker
+        service: lms_worker
+        description: Background video and task processing
+        check_type: container_running
+        timeout: 20
       - key: frontend
-        name: LMS Client Portal
-        service: lms_frontend
+        name: LMS Client Portal (Nginx)
+        service: lms_nginx
         description: Web portal listening on port 8082
         check_type: http_get
         endpoint: http://127.0.0.1:8082/
