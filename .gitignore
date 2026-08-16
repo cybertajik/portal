@@ -1,0 +1,36 @@
+# Node dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env*.local
+
+# Build artifacts
+frontend/dist/
+dist/
+build/
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+*.log
+
+# IDE
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Deployment & Scratch scripts
+scratch/
+scripts/
+deploy/
+*.mjs
+

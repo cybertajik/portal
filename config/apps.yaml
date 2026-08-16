@@ -1,0 +1,190 @@
+# Application Registry for Server Portal
+# Adding a new application only requires adding an entry to this file.
+
+portal:
+  version: "1.0.0"
+  server_ip: "159.195.113.105"
+  default_idle_timeout: 1800 # 30 minutes
+  check_interval_seconds: 30
+  cors_origins: ["*"]
+
+applications:
+  - id: scheduler
+    name: Staff Scheduler
+    tagline: Shift & Workforce Management
+    category: Operations & Scheduling
+    description: High-performance workforce scheduling platform with automated shift generation, conflict resolution, and Celery background workers.
+    icon: Calendar
+    accent_color: "#3b82f6" # Blue
+    directory: /opt/apps/scheduler
+    compose_file: docker-compose.yml
+    internal_port: 8081
+    health_url: http://127.0.0.1:8081/api/v1/health
+    expected_health_payload:
+      status: healthy
+      database: true
+      redis: true
+    launch_path: "http://159.195.113.105:8081"
+    subdomain: "scheduler"
+    startup_timeout: 180
+    idle_timeout_seconds: 1800 # 30 minutes
+    enabled: true
+    test_credentials:
+      username: "admin@scheduler.local"
+      password: "TestPassword2026!"
+      role: "Administrator"
+      notes: "Full administrative access with shift creation and conflict override privileges."
+    containers:
+      - scheduler_postgres
+      - scheduler_redis
+      - scheduler_backend
+      - scheduler_celery_worker
+      - scheduler_celery_beat
+      - scheduler_frontend
+    startup_stages:
+      - key: postgres
+        name: PostgreSQL 16 Database
+        service: scheduler_postgres
+        description: Initializing relational storage and active connection pool
+        check_type: docker_health
+        timeout: 30
+      - key: redis
+        name: Redis 7 In-Memory Cache
+        service: scheduler_redis
+        description: Starting message broker and session store
+        check_type: docker_health
+        timeout: 20
+      - key: backend
+        name: FastAPI Core Backend
+        service: scheduler_backend
+        description: Booting Uvicorn ASGI server and running database verifications
+        check_type: http_get
+        endpoint: http://127.0.0.1:8081/api/v1/health
+        timeout: 45
+      - key: celery_worker
+        name: Celery Task Worker
+        service: scheduler_celery_worker
+        description: Spawning asynchronous background task processors
+        check_type: container_running
+        timeout: 20
+      - key: celery_beat
+        name: Celery Beat Periodic Scheduler
+        service: scheduler_celery_beat
+        description: Activating scheduled cron jobs and interval timers
+        check_type: container_running
+        timeout: 15
+      - key: frontend
+        name: React Web Frontend (Nginx)
+        service: scheduler_frontend
+        description: Serving compiled single-page application on port 8081
+        check_type: http_get
+        endpoint: http://127.0.0.1:8081/
+        timeout: 20
+    safety_checks:
+      check_active_celery_jobs: true
+      check_active_connections: true
+
+  - id: lms
+    name: Learning Management System
+    tagline: Interactive Training & Course Portal
+    category: Education & Training
+    description: Centralized employee training, video curriculum, interactive quizzes, and skill certification tracking suite.
+    icon: GraduationCap
+    accent_color: "#8b5cf6" # Purple
+    directory: /opt/apps/lms
+    compose_file: docker-compose.yml
+    internal_port: 8082
+    health_url: http://127.0.0.1:8082/api/health
+    launch_path: "http://159.195.113.105:8082"
+    subdomain: "lms"
+    startup_timeout: 180
+    idle_timeout_seconds: 1800 # 30 minutes
+    enabled: true
+    test_credentials:
+      username: "student_demo@lms.local"
+      password: "LearnPass2026!"
+      role: "Instructor / Student"
+      notes: "Access to all published courses, quizzes, and certification modules."
+    containers:
+      - lms_db
+      - lms_redis
+      - lms_backend
+      - lms_frontend
+    startup_stages:
+      - key: database
+        name: PostgreSQL Database
+        service: lms_db
+        description: Initializing LMS student and course records
+        check_type: docker_health
+        timeout: 30
+      - key: redis
+        name: Redis Cache
+        service: lms_redis
+        description: Session caching and media streaming buffer
+        check_type: docker_health
+        timeout: 20
+      - key: backend
+        name: LMS API Service
+        service: lms_backend
+        description: Starting course delivery engine and grading API
+        check_type: http_get
+        endpoint: http://127.0.0.1:8082/api/health
+        timeout: 45
+      - key: frontend
+        name: LMS Client Portal
+        service: lms_frontend
+        description: Web portal listening on port 8082
+        check_type: http_get
+        endpoint: http://127.0.0.1:8082/
+        timeout: 20
+    safety_checks:
+      check_active_connections: true
+
+  - id: accounting
+    name: Financial & Invoice Hub
+    tagline: Ledger, Invoicing & Payroll
+    category: Finance & Administration
+    description: Secure internal accounting system for invoice generation, expense approvals, ledger synchronization, and tax reports.
+    icon: ReceiptText
+    accent_color: "#10b981" # Emerald
+    directory: /opt/apps/accounting
+    compose_file: docker-compose.yml
+    internal_port: 8083
+    health_url: http://127.0.0.1:8083/healthz
+    launch_path: "http://159.195.113.105:8083"
+    subdomain: "accounting"
+    startup_timeout: 180
+    idle_timeout_seconds: 1800
+    enabled: true
+    test_credentials:
+      username: "finance_test@corp.local"
+      password: "Invoice2026Secure!"
+      role: "Auditor / Accountant"
+      notes: "Read-only access to ledger and sample payroll sheets."
+    containers:
+      - accounting_db
+      - accounting_backend
+      - accounting_frontend
+    startup_stages:
+      - key: database
+        name: Encrypted Ledger Database
+        service: accounting_db
+        description: Mounting encrypted audit log database
+        check_type: docker_health
+        timeout: 30
+      - key: backend
+        name: Accounting Services Engine
+        service: accounting_backend
+        description: Booting financial calculation and reporting microservice
+        check_type: http_get
+        endpoint: http://127.0.0.1:8083/healthz
+        timeout: 40
+      - key: frontend
+        name: Financial Dashboard UI
+        service: accounting_frontend
+        description: Interactive reporting interface
+        check_type: http_get
+        endpoint: http://127.0.0.1:8083/
+        timeout: 20
+    safety_checks:
+      check_active_transactions: true

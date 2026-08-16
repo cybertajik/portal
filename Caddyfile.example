@@ -1,0 +1,39 @@
+# Caddyfile Configuration for Multi-Application Server
+
+# ==============================================================================
+# 1. IMMEDIATE IP-BASED ROUTING (Before DNS is finalized)
+# ==============================================================================
+# In this mode, Caddy proxies public port :80 to the Portal dashboard.
+# Scheduler and internal apps remain internal (or accessed on their ports).
+
+:80 {
+    # Main Entry Point: Server Control Portal
+    reverse_proxy 127.0.0.1:8000
+
+    # Optional internal path routing if desired:
+    # handle /scheduler/* {
+    #     reverse_proxy 127.0.0.1:8081
+    # }
+}
+
+# ==============================================================================
+# 2. FUTURE PRODUCTION SUBDOMAIN ROUTING (Enable once DNS records point to 159.195.113.105)
+# ==============================================================================
+# DO NOT enable these until DNS A records for your domain actually point to 159.195.113.105.
+# Caddy will automatically manage Let's Encrypt SSL/TLS certificates for each subdomain.
+
+# portal.yourdomain.com {
+#     reverse_proxy 127.0.0.1:8000
+# }
+
+# scheduler.yourdomain.com {
+#     reverse_proxy 127.0.0.1:8081
+# }
+
+# lms.yourdomain.com {
+#     reverse_proxy 127.0.0.1:8082
+# }
+
+# accounting.yourdomain.com {
+#     reverse_proxy 127.0.0.1:8083
+# }

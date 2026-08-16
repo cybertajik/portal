@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  portal:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: server_portal
+    restart: always
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      - PORT=8000
+      - NODE_ENV=production
+      - APPS_CONFIG_PATH=/opt/apps/portal/config/apps.yaml
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /opt/apps:/opt/apps
+      - ./config/apps.yaml:/opt/apps/portal/config/apps.yaml
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8000/healthz"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
