@@ -153,9 +153,11 @@ export default function AppCard({
     ? `${(app.memoryMb / 1024).toFixed(1)} GB` 
     : `${app.memoryMb || 0} MB`;
 
+  const isCompact = app.isExternal || !app.directory;
+
   return (
     <div 
-      className="app-card" 
+      className={`app-card ${isCompact ? 'compact-card' : ''}`}
       style={{ '--card-accent': app.accentColor || '#3b82f6' }}
     >
       {/* Header with App Identity & Status */}
@@ -168,7 +170,7 @@ export default function AppCard({
               border: `1px solid ${app.accentColor || '#3b82f6'}44`
             }}
           >
-            <IconComponent size={24} />
+            <IconComponent size={isCompact ? 20 : 24} />
           </div>
           <div className="app-titles">
             <h3>{app.name}</h3>
