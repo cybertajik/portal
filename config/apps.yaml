@@ -11,9 +11,9 @@ portal:
 applications:
   - id: scheduler
     name: Staff Scheduler
-    tagline: Shift & Workforce Management
+    tagline: Shift & Workforce Management Platform
     category: Operations & Scheduling
-    description: High-performance workforce scheduling platform with automated shift generation, conflict resolution, and Celery background workers.
+    description: High-performance workforce scheduling platform featuring automated AI shift generation, role-based availability matching, conflict resolution, and Celery background task processing.
     icon: Calendar
     accent_color: "#3b82f6" # Blue
     directory: /opt/apps/scheduler
@@ -30,10 +30,12 @@ applications:
     idle_timeout_seconds: 1800 # 30 minutes
     enabled: true
     test_credentials:
-      username: "admin@scheduler.local"
-      password: "TestPassword2026!"
-      role: "Administrator"
-      notes: "Full administrative access with shift creation and conflict override privileges."
+      accounts:
+        - role: "Administrator"
+          username: "admin@scheduler.local"
+          password: "TestPassword2026!"
+          badge: "Full Admin Access"
+          notes: "Full administrative access with shift creation and conflict override privileges."
     containers:
       - scheduler_postgres
       - scheduler_redis
@@ -86,9 +88,9 @@ applications:
 
   - id: lms
     name: Learning Management System
-    tagline: Interactive Training & Course Portal
-    category: Education & Training
-    description: Centralized employee training, video curriculum, interactive quizzes, and skill certification tracking suite.
+    tagline: Enterprise LMS & LXP Learning Experience Platform
+    category: Education & Workforce Training
+    description: Enterprise-grade Learning Management System (LMS) and Learning Experience Platform (LXP) designed for universities, schools, and corporate academies. Features multi-tenant course management, video lecture streaming with MinIO S3, interactive assessments and rubrics, virtual live classrooms, student progress analytics, and real-time gamification with XP levels, streaks, and achievement badges.
     icon: GraduationCap
     accent_color: "#8b5cf6" # Purple
     directory: /opt/apps/lms
@@ -101,10 +103,22 @@ applications:
     idle_timeout_seconds: 1800 # 30 minutes
     enabled: true
     test_credentials:
-      username: "admin@admin.com"
-      password: "!23QWEasd"
-      role: "Administrator"
-      notes: "Full admin access to all published courses, quizzes, and certification modules."
+      accounts:
+        - role: "Administrator"
+          username: "admin@admin.com"
+          password: "!23QWEasd"
+          badge: "Full System Access"
+          notes: "Tenant configuration, global course catalogs, video library storage, and administrative analytics."
+        - role: "Teacher / Instructor"
+          username: "teacher@teacher.com"
+          password: "!23QWEasd"
+          badge: "Instructor Access"
+          notes: "Curriculum authoring, lesson modules, assignment creation, student grading, and live session hosting."
+        - role: "Student / Learner"
+          username: "student@student.com"
+          password: "!23QWEasd"
+          badge: "Student Access"
+          notes: "Course enrollment, video player, interactive quizzes, XP progression, daily learning streaks, and certificates."
     containers:
       - lms_postgres
       - lms_redis
@@ -117,7 +131,7 @@ applications:
       - key: postgres
         name: PostgreSQL Database
         service: lms_postgres
-        description: Initializing LMS student and course records
+        description: Initializing LMS student, curriculum, and quiz records
         check_type: docker_health
         timeout: 30
       - key: redis
@@ -142,7 +156,7 @@ applications:
       - key: worker
         name: Celery Background Worker
         service: lms_worker
-        description: Background video and task processing
+        description: Background video encoding and task processing
         check_type: container_running
         timeout: 20
       - key: frontend
@@ -172,10 +186,12 @@ applications:
     idle_timeout_seconds: 1800
     enabled: true
     test_credentials:
-      username: "finance_test@corp.local"
-      password: "Invoice2026Secure!"
-      role: "Auditor / Accountant"
-      notes: "Read-only access to ledger and sample payroll sheets."
+      accounts:
+        - role: "Auditor / Accountant"
+          username: "finance_test@corp.local"
+          password: "Invoice2026Secure!"
+          badge: "Auditor Access"
+          notes: "Read-only access to ledger and sample payroll sheets."
     containers:
       - accounting_db
       - accounting_backend

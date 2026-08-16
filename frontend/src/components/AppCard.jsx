@@ -18,7 +18,8 @@ import {
   EyeOff,
   KeyRound,
   UserCheck,
-  Info
+  Info,
+  ChevronRight
 } from 'lucide-react';
 
 const ICON_MAP = {
@@ -28,28 +29,11 @@ const ICON_MAP = {
   Box
 };
 
-export default function AppCard({ 
-  app, 
-  isAdminMode,
-  onStart, 
-  onStop, 
-  onRestart, 
-  onViewLogs, 
-  onOpenSettings,
-  onOpenStartupModal 
-}) {
+// Single credential account block
+function CredentialBlock({ account, accentColor }) {
   const [showPassword, setShowPassword] = useState(false);
   const [copiedUser, setCopiedUser] = useState(false);
   const [copiedPass, setCopiedPass] = useState(false);
-
-  const IconComponent = ICON_MAP[app.icon] || Box;
-  const isHealthy = app.state === 'HEALTHY';
-  const isRunning = app.state === 'RUNNING';
-  const isHibernated = app.state === 'HIBERNATED';
-  const isStarting = app.state === 'STARTING';
-  const isStopping = app.state === 'STOPPING';
-
-  const creds = app.testCredentials;
 
   const copyToClipboard = (text, type) => {
     if (!text) return;
@@ -62,6 +46,96 @@ export default function AppCard({
       setTimeout(() => setCopiedPass(false), 2000);
     }
   };
+
+  return (
+    <div className="account-cred-block">
+      {/* Role badge */}
+      <div className="account-role-header">
+        <span className="role-tag" style={{ borderColor: `${accentColor || '#60a5fa'}44`, color: accentColor || '#93c5fd' }}>
+          <UserCheck size={11} /> {account.role}
+        </span>
+        {account.badge && (
+          <span className="account-badge-sub">{account.badge}</span>
+        )}
+      </div>
+
+      <div className="credentials-fields">
+        {/* Username Row */}
+        <div className="credential-row">
+          <span className="credential-label">Login:</span>
+          <div className="credential-value-wrap">
+            <code className="credential-value">{account.username}</code>
+            <button 
+              type="button"
+              className="btn-copy-cred" 
+              onClick={() => copyToClipboard(account.username, 'user')}
+              title="Copy login email"
+            >
+              {copiedUser ? <Check size={13} color="#34d399" /> : <Copy size={13} />}
+            </button>
+          </div>
+        </div>
+
+        {/* Password Row */}
+        <div className="credential-row">
+          <span className="credential-label">Pass:</span>
+          <div className="credential-value-wrap">
+            <code className="credential-value">
+              {showPassword ? account.password : '••••••••••••'}
+            </code>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <button 
+                type="button"
+                className="btn-copy-cred" 
+                onClick={() => setShowPassword(!showPassword)}
+                title={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff size={13} /> : <Eye size={13} />}
+              </button>
+              <button 
+                type="button"
+                className="btn-copy-cred" 
+                onClick={() => copyToClipboard(account.password, 'pass')}
+                title="Copy password"
+              >
+                {copiedPass ? <Check size={13} color="#34d399" /> : <Copy size={13} />}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {account.notes && (
+        <div className="credential-notes">
+          <Info size={11} style={{ flexShrink: 0, marginTop: '2px' }} />
+          <span>{account.notes}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function AppCard({ 
+  app, 
+  isAdminMode,
+  onStart, 
+  onStop, 
+  onRestart, 
+  onViewLogs, 
+  onOpenSettings,
+  onOpenStartupModal 
+}) {
+  const [activeAccountTab, setActiveAccountTab] = useState(0);
+
+  const IconComponent = ICON_MAP[app.icon] || Box;
+  const isHealthy = app.state === 'HEALTHY';
+  const isRunning = app.state === 'RUNNING';
+  const isHibernated = app.state === 'HIBERNATED';
+  const isStarting = app.state === 'STARTING';
+  const isStopping = app.state === 'STOPPING';
+
+  const creds = app.testCredentials;
+  const accounts = creds ? (creds.accounts || [creds]) : [];
 
   // Format memory
   const memoryFormatted = app.memoryMb >= 1024 
@@ -132,69 +206,43 @@ export default function AppCard({
       </p>
 
       {/* Test Login Information Card */}
-      {creds && (
+      {accounts.length > 0 && (
         <div className="test-credentials-card">
           <div className="credentials-header">
             <div className="credentials-title">
               <KeyRound size={14} style={{ color: app.accentColor || '#60a5fa' }} />
               <span>Testing Login Credentials</span>
             </div>
-            {creds.role && (
-              <span className="role-tag">
-                <UserCheck size={11} /> {creds.role}
-              </span>
+            {accounts.length > 1 && (
+              <div className="account-tabs">
+                {accounts.map((acc, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    className={`account-tab-btn ${activeAccountTab === idx ? 'active' : ''}`}
+                    onClick={() => setActiveAccountTab(idx)}
+                    style={{
+                      borderColor: activeAccountTab === idx ? (app.accentColor || '#60a5fa') : 'transparent'
+                    }}
+                  >
+                    {acc.role.split(' ')[0]}
+                  </button>
+                ))}
+              </div>
             )}
           </div>
 
-          <div className="credentials-fields">
-            {/* Username Row */}
-            <div className="credential-row">
-              <span className="credential-label">Username:</span>
-              <div className="credential-value-wrap">
-                <code className="credential-value">{creds.username}</code>
-                <button 
-                  type="button"
-                  className="btn-copy-cred" 
-                  onClick={() => copyToClipboard(creds.username, 'user')}
-                  title="Copy username"
-                >
-                  {copiedUser ? <Check size={13} color="#34d399" /> : <Copy size={13} />}
-                </button>
-              </div>
-            </div>
-
-            {/* Password Row */}
-            <div className="credential-row">
-              <span className="credential-label">Password:</span>
-              <div className="credential-value-wrap">
-                <code className="credential-value">
-                  {showPassword ? creds.password : '••••••••••••'}
-                </code>
-                <button 
-                  type="button"
-                  className="btn-copy-cred" 
-                  onClick={() => setShowPassword(!showPassword)}
-                  title={showPassword ? "Hide password" : "Show password"}
-                >
-                  {showPassword ? <EyeOff size={13} /> : <Eye size={13} />}
-                </button>
-                <button 
-                  type="button"
-                  className="btn-copy-cred" 
-                  onClick={() => copyToClipboard(creds.password, 'pass')}
-                  title="Copy password"
-                >
-                  {copiedPass ? <Check size={13} color="#34d399" /> : <Copy size={13} />}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {creds.notes && (
-            <div className="credential-notes">
-              <Info size={11} style={{ flexShrink: 0, marginTop: '2px' }} />
-              <span>{creds.notes}</span>
-            </div>
+          {/* Render Active Account */}
+          {accounts.length > 1 ? (
+            <CredentialBlock 
+              account={accounts[activeAccountTab] || accounts[0]} 
+              accentColor={app.accentColor} 
+            />
+          ) : (
+            <CredentialBlock 
+              account={accounts[0]} 
+              accentColor={app.accentColor} 
+            />
           )}
         </div>
       )}
@@ -220,101 +268,91 @@ export default function AppCard({
               {(isHealthy || isRunning) ? `${app.containersRunning}/${app.totalContainers}` : `0/${app.totalContainers}`}
             </span>
           </div>
+          <div className="telemetry-item">
+            <span className="telemetry-label">Idle In</span>
+            <span className="telemetry-val" style={{ color: '#fbbf24' }}>
+              {(isHealthy || isRunning) ? `${Math.max(0, Math.floor((app.idleTimeoutSeconds - (app.idleSeconds || 0)) / 60))}m` : '—'}
+            </span>
+          </div>
         </div>
       )}
 
-      {/* Action Buttons */}
-      <div className="app-card-actions" style={{ marginTop: 'auto', paddingTop: '16px' }}>
-        {isHibernated && (
-          <button 
-            className="btn btn-primary" 
-            onClick={() => onStart(app)}
-            style={{ 
-              width: '100%', 
-              background: `linear-gradient(135deg, ${app.accentColor || '#3b82f6'}, #2563eb)`,
-              padding: '12px 20px',
-              fontSize: '0.92rem'
-            }}
-          >
-            <Play size={16} fill="white" />
-            Start & Open {app.name}
-          </button>
-        )}
-
-        {(isHealthy || isRunning) && (
-          <>
+      {/* Action Footer */}
+      <div className="app-card-footer">
+        {/* Main Launcher Button */}
+        <div className="primary-action-wrap">
+          {(isHealthy || isRunning) ? (
             <a 
-              href={app.launchPath} 
+              href={app.launchPath || `http://159.195.113.105:${app.internalPort}`}
               target="_blank" 
-              rel="noreferrer" 
-              className="btn btn-success"
-              style={{ flex: 1, padding: '12px 20px', fontSize: '0.92rem' }}
-              title="Open application in new tab"
+              rel="noreferrer"
+              className="btn btn-primary"
             >
               <ExternalLink size={16} />
               Open {app.name}
             </a>
+          ) : isStarting ? (
+            <button 
+              className="btn btn-primary" 
+              onClick={() => onOpenStartupModal(app)}
+              style={{ opacity: 0.8 }}
+            >
+              <RotateCw size={16} className="spin" />
+              Starting Application...
+            </button>
+          ) : isStopping ? (
+            <button className="btn btn-outline" disabled>
+              <RotateCw size={16} className="spin" />
+              Stopping Services...
+            </button>
+          ) : (
+            <button 
+              className="btn btn-primary" 
+              onClick={() => onStart(app.id)}
+            >
+              <Play size={16} />
+              Start & Open App
+            </button>
+          )}
+        </div>
 
-            {isAdminMode && (
+        {/* Admin Controls */}
+        {isAdminMode && (
+          <div className="admin-actions">
+            {(isHealthy || isRunning) && (
               <>
                 <button 
-                  className="btn btn-outline" 
-                  onClick={() => onViewLogs(app)}
-                  title="Inspect Logs"
+                  className="btn-icon" 
+                  onClick={() => onStop(app.id)}
+                  title="Hibernate Application"
                 >
-                  <Terminal size={15} />
+                  <Square size={15} color="#fb7185" />
                 </button>
-
                 <button 
-                  className="btn btn-outline" 
-                  onClick={() => onRestart(app)}
-                  title="Restart"
+                  className="btn-icon" 
+                  onClick={() => onRestart(app.id)}
+                  title="Restart Containers"
                 >
                   <RotateCw size={15} />
                 </button>
-
-                <button 
-                  className="btn btn-danger" 
-                  onClick={() => onStop(app)}
-                  title="Hibernate"
-                >
-                  <Square size={14} fill="currentColor" />
-                </button>
               </>
             )}
-          </>
-        )}
-
-        {isStarting && (
-          <button 
-            className="btn btn-outline" 
-            style={{ width: '100%', borderColor: 'var(--accent-amber)', color: 'var(--accent-amber)', padding: '12px 20px' }}
-            onClick={() => onOpenStartupModal(app)}
-          >
-            <RotateCw size={16} className="spin-anim" />
-            Starting {app.name}... (Click to View)
-          </button>
-        )}
-
-        {isStopping && (
-          <button 
-            className="btn btn-outline" 
-            style={{ width: '100%', borderColor: 'var(--accent-rose)', color: 'var(--accent-rose)', padding: '12px 20px' }}
-            disabled
-          >
-            <RotateCw size={16} className="spin-anim" />
-            Hibernating & Freeing RAM...
-          </button>
-        )}
-
-        {isAdminMode && isHibernated && (
-          <button 
-            className="btn btn-icon" 
-            onClick={() => onOpenSettings(app)}
-            title="Settings"
-          >
-            <Settings size={16} />
-          </button>
+            
+            <button 
+              className="btn-icon" 
+              onClick={() => onViewLogs(app.id)}
+              title="View Container Logs"
+            >
+              <Terminal size={15} />
+            </button>
+            <button 
+              className="btn-icon" 
+              onClick={() => onOpenSettings(app)}
+              title="Application Settings"
+            >
+              <Settings size={15} />
+            </button>
+          </div>
         )}
       </div>
     </div>
