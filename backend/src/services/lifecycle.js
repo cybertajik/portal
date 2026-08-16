@@ -38,6 +38,33 @@ export async function getAppStatus(appId) {
   const app = cfg.applications.find(a => a.id === appId);
   if (!app) return null;
 
+  // External / Cloud applications (hosted on Netlify, Vercel, GitHub Pages)
+  if (app.type === 'external' || !app.directory) {
+    return {
+      id: app.id,
+      name: app.name,
+      tagline: app.tagline,
+      category: app.category,
+      description: app.description,
+      icon: app.icon,
+      accentColor: app.accent_color || '#3b82f6',
+      state: 'ONLINE',
+      isExternal: true,
+      launchPath: app.launch_path,
+      testCredentials: app.test_credentials || null,
+      containersRunning: 0,
+      totalContainers: 0,
+      cpuPercent: 0,
+      memoryMb: 0,
+      idleSeconds: 0,
+      idleTimeoutSeconds: 0,
+      activeJobs: 0,
+      activeUsers: 0,
+      safeToStop: true,
+      startupStages: []
+    };
+  }
+
   const isAvail = await isDockerAvailable();
   const sim = getSimulatedStatus(appId);
 

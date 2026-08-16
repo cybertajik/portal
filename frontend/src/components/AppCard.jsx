@@ -19,14 +19,24 @@ import {
   KeyRound,
   UserCheck,
   Info,
-  ChevronRight
+  ChevronRight,
+  Calculator,
+  BookOpen,
+  Gamepad2,
+  Globe,
+  Sparkles
 } from 'lucide-react';
 
 const ICON_MAP = {
   Calendar,
   GraduationCap,
   ReceiptText,
-  Box
+  Box,
+  Calculator,
+  BookOpen,
+  Gamepad2,
+  Globe,
+  Sparkles
 };
 
 // Single credential account block
@@ -130,6 +140,7 @@ export default function AppCard({
   const IconComponent = ICON_MAP[app.icon] || Box;
   const isHealthy = app.state === 'HEALTHY';
   const isRunning = app.state === 'RUNNING';
+  const isOnline = app.state === 'ONLINE' || app.isExternal;
   const isHibernated = app.state === 'HIBERNATED';
   const isStarting = app.state === 'STARTING';
   const isStopping = app.state === 'STOPPING';
@@ -167,13 +178,13 @@ export default function AppCard({
 
         {/* Status Badge */}
         <div>
-          {isHealthy && (
+          {(isHealthy || isOnline) && (
             <div className="status-badge status-healthy">
               <span className="status-dot"></span>
               ONLINE
             </div>
           )}
-          {isRunning && (
+          {isRunning && !isHealthy && !isOnline && (
             <div className="status-badge status-healthy">
               <span className="status-dot"></span>
               RUNNING
@@ -248,7 +259,7 @@ export default function AppCard({
       )}
 
       {/* Admin Mode Resource Telemetry */}
-      {isAdminMode && (
+      {isAdminMode && !app.isExternal && (
         <div className="app-telemetry" style={{ marginTop: '12px' }}>
           <div className="telemetry-item">
             <span className="telemetry-label">CPU Usage</span>
@@ -277,11 +288,34 @@ export default function AppCard({
         </div>
       )}
 
+      {isAdminMode && app.isExternal && (
+        <div className="app-telemetry" style={{ marginTop: '12px' }}>
+          <div className="telemetry-item">
+            <span className="telemetry-label">Host Platform</span>
+            <span className="telemetry-val" style={{ color: app.accentColor || '#60a5fa' }}>
+              Cloud Web App
+            </span>
+          </div>
+          <div className="telemetry-item">
+            <span className="telemetry-label">Deployment</span>
+            <span className="telemetry-val" style={{ color: '#34d399' }}>
+              Production Live
+            </span>
+          </div>
+          <div className="telemetry-item">
+            <span className="telemetry-label">Architecture</span>
+            <span className="telemetry-val">
+              Static SPA / PWA
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Action Footer */}
       <div className="app-card-footer">
         {/* Main Launcher Button */}
         <div className="primary-action-wrap">
-          {(isHealthy || isRunning) ? (
+          {(isHealthy || isRunning || isOnline) ? (
             <a 
               href={app.launchPath || `http://159.195.113.105:${app.internalPort}`}
               target="_blank" 
@@ -316,8 +350,8 @@ export default function AppCard({
           )}
         </div>
 
-        {/* Admin Controls */}
-        {isAdminMode && (
+        {/* Admin Controls (for local docker apps only) */}
+        {isAdminMode && !app.isExternal && (
           <div className="admin-actions">
             {(isHealthy || isRunning) && (
               <>

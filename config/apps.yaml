@@ -169,53 +169,35 @@ applications:
     safety_checks:
       check_active_connections: true
 
-  - id: accounting
-    name: Financial & Invoice Hub
-    tagline: Ledger, Invoicing & Payroll
-    category: Finance & Administration
-    description: Secure internal accounting system for invoice generation, expense approvals, ledger synchronization, and tax reports.
-    icon: ReceiptText
-    accent_color: "#10b981" # Emerald
-    directory: /opt/apps/accounting
-    compose_file: docker-compose.yml
-    internal_port: 8083
-    health_url: http://127.0.0.1:8083/healthz
-    launch_path: "http://159.195.113.105:8083"
-    subdomain: "accounting"
-    startup_timeout: 180
-    idle_timeout_seconds: 1800
+  - id: mental-abacus
+    name: Mental Abacus
+    tagline: Interactive Japanese Soroban Calculator
+    category: Mathematics & Mental Calculation
+    description: Mental Abacus is an interactive Japanese Soroban abacus calculator and arithmetic visualization tool. Users can enter algebraic mathematical equations to watch the beads move dynamically to calculate the solution, or manually slide beads across rods to compute values with real-time value reveals and multi-language support.
+    icon: Calculator
+    accent_color: "#f59e0b" # Amber
+    type: external
+    launch_path: "https://resplendent-boba-cad33f.netlify.app/"
     enabled: true
-    test_credentials:
-      accounts:
-        - role: "Auditor / Accountant"
-          username: "finance_test@corp.local"
-          password: "Invoice2026Secure!"
-          badge: "Auditor Access"
-          notes: "Read-only access to ledger and sample payroll sheets."
-    containers:
-      - accounting_db
-      - accounting_backend
-      - accounting_frontend
-    startup_stages:
-      - key: database
-        name: Encrypted Ledger Database
-        service: accounting_db
-        description: Mounting encrypted audit log database
-        check_type: docker_health
-        timeout: 30
-      - key: backend
-        name: Accounting Services Engine
-        service: accounting_backend
-        description: Booting financial calculation and reporting microservice
-        check_type: http_get
-        endpoint: http://127.0.0.1:8083/healthz
-        timeout: 40
-      - key: frontend
-        name: Financial Dashboard UI
-        service: accounting_frontend
-        description: Interactive reporting interface
-        check_type: http_get
-        endpoint: http://127.0.0.1:8083/
-        timeout: 20
-    safety_checks:
-      check_active_transactions: true
+
+  - id: lernster
+    name: Lernster
+    tagline: Gamified Spanish Vocabulary & Sentence Learning
+    category: Language & Vocabulary Training
+    description: Lernster is a modern gamified web application for learning and practicing Spanish vocabulary and sentence structures. It provides multiple-choice translation quizzes matching Spanish terms to English across CEFR levels (A1 to B2) with audio pronunciation, sound toggles, and live accuracy statistics.
+    icon: BookOpen
+    accent_color: "#06b6d4" # Cyan
+    type: external
+    launch_path: "https://learnster-py.vercel.app/"
+    enabled: true
+
+  - id: apple-chase
+    name: Apple Chase
+    tagline: Retro 2D Arcade Platformer Game
+    category: Interactive Games & Entertainment
+    description: Apple Chase is a fast-paced retro 2D arcade platformer game. Players guide a character across multi-level scaffolding to catch falling apples before they rot on the ground while dodging patrolling enemy guard dogs on each floor with keyboard navigation, lives tracking, and escalating difficulty.
+    icon: Gamepad2
+    accent_color: "#ef4444" # Red
+    type: external
+    launch_path: "https://cybertajik.github.io/Apple-Chase/"
+    enabled: true
