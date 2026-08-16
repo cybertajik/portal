@@ -1,12 +1,14 @@
 import React from 'react';
-import { Layers, RefreshCw, User, Shield, ShieldCheck } from 'lucide-react';
+import { Layers, RefreshCw, User, Shield, ShieldCheck, Lock, LogOut } from 'lucide-react';
 
 export default function Header({ 
   serverIp, 
   onRefresh, 
   isRefreshing, 
   isAdminMode, 
-  onToggleAdminMode 
+  isAdminAuthenticated,
+  onToggleAdminMode,
+  onLogoutAdmin
 }) {
   return (
     <header className="portal-header">
@@ -37,11 +39,30 @@ export default function Header({
             type="button"
             className={`view-toggle-btn ${isAdminMode ? 'active' : ''}`}
             onClick={() => onToggleAdminMode(true)}
+            title={isAdminAuthenticated ? 'Admin Console Active' : 'Password Protected'}
           >
-            <Shield size={13} />
+            {isAdminAuthenticated ? (
+              <ShieldCheck size={13} color="#34d399" />
+            ) : (
+              <Lock size={13} color="#f59e0b" />
+            )}
             Admin Mode
           </button>
         </div>
+
+        {/* Lock Console / Logout Button when Admin is active */}
+        {isAdminMode && isAdminAuthenticated && (
+          <button 
+            type="button"
+            className="btn btn-outline"
+            onClick={onLogoutAdmin}
+            title="Lock Admin Console & Return to User View"
+            style={{ borderColor: 'rgba(245, 158, 11, 0.3)', color: '#fbbf24' }}
+          >
+            <Lock size={13} />
+            Lock
+          </button>
+        )}
 
         {isAdminMode && (
           <button 

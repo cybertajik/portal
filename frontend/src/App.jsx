@@ -6,6 +6,7 @@ import StartupModal from './components/StartupModal';
 import StopConfirmModal from './components/StopConfirmModal';
 import LogModal from './components/LogModal';
 import SettingsModal from './components/SettingsModal';
+import AdminAuthModal from './components/AdminAuthModal';
 import Toast from './components/Toast';
 import { 
   fetchApplications, 
@@ -13,7 +14,9 @@ import {
   startApplication, 
   stopApplication, 
   restartApplication, 
-  subscribeAppEvents 
+  subscribeAppEvents,
+  verifyAdminSession,
+  logoutAdmin
 } from './services/api';
 import { Search, Layers } from 'lucide-react';
 
@@ -23,6 +26,8 @@ export default function App() {
   const [serverIp, setServerIp] = useState('159.195.113.105');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isAdminMode, setIsAdminMode] = useState(false); // Default to clean User View
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -47,6 +52,15 @@ export default function App() {
   const removeToast = (id) => {
     setToasts(prev => prev.filter(t => t.id !== id));
   };
+
+  // Check existing session on mount
+  useEffect(() => {
+    verifyAdminSession().then(isValid => {
+      if (isValid) {
+        setIsAdminAuthenticated(true);
+      }
+    });
+  }, []);
 
   // Load Data
   const loadData = useCallback(async (showToast = false) => {
@@ -115,8 +129,37 @@ export default function App() {
     };
   }, [applications.map(a => a.id).join(',')]);
 
+  // Admin Mode Toggle with Password Protection
+  const handleToggleAdminMode = (wantsAdmin) => {
+    if (!wantsAdmin) {
+      setIsAdminMode(false);
+    } else {
+      if (isAdminAuthenticated) {
+        setIsAdminMode(true);
+      } else {
+        setIsAuthModalOpen(true);
+      }
+    }
+  };
+
+  const handleAdminAuthSuccess = () => {
+    setIsAdminAuthenticated(true);
+    setIsAdminMode(true);
+    setIsAuthModalOpen(false);
+    addToast('Admin mode unlocked successfully.', 'success');
+  };
+
+  const handleLogoutAdmin = () => {
+    logoutAdmin();
+    setIsAdminAuthenticated(false);
+    setIsAdminMode(false);
+    addToast('Admin console locked. Returned to User View.', 'info');
+  };
+
   // Actions
-  const handleStart = async (app) => {
+  const handleStart = async (appId) => {
+    const app = applications.find(a => a.id === appId);
+    if (!app) return;
     try {
       setStartupProgress({ stageIndex: 0, status: 'in_progress' });
       setStartupModalApp(app);
@@ -128,8 +171,13 @@ export default function App() {
     }
   };
 
-  const handleStopRequest = (app) => {
-    setStopConfirmApp(app);
+  const handleStopRequest = (appId) => {
+    if (!isAdminAuthenticated) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    const app = applications.find(a => a.id === appId);
+    if (app) setStopConfirmApp(app);
   };
 
   const handleStopConfirm = async (app, force) => {
@@ -140,7 +188,11 @@ export default function App() {
       addToast(`${app.name} hibernated.`, 'success');
       loadData(false);
     } catch (err) {
-      if (err.isSafetyViolation) {
+      if (err.isAuthError) {
+        setIsAdminAuthenticated(false);
+        setIsAdminMode(false);
+        setIsAuthModalOpen(true);
+      } else if (err.isSafetyViolation) {
         addToast(`Hibernation blocked: ${err.message}`, 'warning');
       } else {
         addToast(`Stop failed: ${err.message}`, 'error');
@@ -148,7 +200,13 @@ export default function App() {
     }
   };
 
-  const handleRestart = async (app) => {
+  const handleRestart = async (appId) => {
+    if (!isAdminAuthenticated) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    const app = applications.find(a => a.id === appId);
+    if (!app) return;
     try {
       setStartupProgress({ stageIndex: 0, status: 'in_progress' });
       setStartupModalApp(app);
@@ -156,83 +214,110 @@ export default function App() {
       addToast(`Restarting ${app.name}...`, 'info');
       loadData(false);
     } catch (err) {
-      addToast(`Restart failed: ${err.message}`, 'error');
+      if (err.isAuthError) {
+        setIsAdminAuthenticated(false);
+        setIsAdminMode(false);
+        setIsAuthModalOpen(true);
+      } else {
+        addToast(`Restart failed: ${err.message}`, 'error');
+      }
     }
+  };
+
+  const handleViewLogs = (appId) => {
+    if (!isAdminAuthenticated) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    const app = applications.find(a => a.id === appId);
+    if (app) setLogModalApp(app);
+  };
+
+  const handleOpenSettings = (app) => {
+    if (!isAdminAuthenticated) {
+      setIsAuthModalOpen(true);
+      return;
+    }
+    setSettingsModalApp(app);
   };
 
   // Filtered applications
   const filteredApps = applications.filter(app => {
-    // Search query
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      const matchName = app.name.toLowerCase().includes(q);
-      const matchDesc = app.description.toLowerCase().includes(q);
-      const matchCat = (app.category || '').toLowerCase().includes(q);
-      if (!matchName && !matchDesc && !matchCat) return false;
-    }
+    const matchesSearch = 
+      app.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      app.tagline?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      app.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      app.category?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    // Category / State filter
+    if (!matchesSearch) return false;
     if (activeFilter === 'all') return true;
-    if (activeFilter === 'healthy') return app.state === 'HEALTHY' || app.state === 'RUNNING';
+    if (activeFilter === 'running') return app.state === 'HEALTHY' || app.state === 'RUNNING' || app.state === 'ONLINE';
     if (activeFilter === 'hibernated') return app.state === 'HIBERNATED';
-    if (activeFilter === 'operations') return app.category?.toLowerCase().includes('operations') || app.category?.toLowerCase().includes('scheduling');
-    if (activeFilter === 'education') return app.category?.toLowerCase().includes('education') || app.category?.toLowerCase().includes('training');
-    if (activeFilter === 'finance') return app.category?.toLowerCase().includes('finance');
-
     return true;
   });
 
   return (
-    <div className="portal-container">
-      {/* Header with User / Admin Mode Toggle */}
-      <Header 
-        serverIp={serverIp} 
-        onRefresh={() => loadData(true)} 
-        isRefreshing={isRefreshing}
-        isAdminMode={isAdminMode}
-        onToggleAdminMode={setIsAdminMode}
-      />
+    <div className="portal-layout">
+      {/* Background Ambience */}
+      <div className="bg-glow bg-glow-1"></div>
+      <div className="bg-glow bg-glow-2"></div>
 
-      {/* System Telemetry Bar (Shown in Admin Mode) */}
-      {isAdminMode && <MetricsBar metrics={metrics} />}
+      <div className="portal-container">
+        {/* Header */}
+        <Header 
+          serverIp={serverIp}
+          onRefresh={() => loadData(true)}
+          isRefreshing={isRefreshing}
+          isAdminMode={isAdminMode}
+          isAdminAuthenticated={isAdminAuthenticated}
+          onToggleAdminMode={handleToggleAdminMode}
+          onLogoutAdmin={handleLogoutAdmin}
+        />
 
-      {/* Filter and Search Bar */}
-      <div className="filter-bar">
-        <div className="filter-tabs">
-          <button 
-            className={`filter-tab ${activeFilter === 'all' ? 'active' : ''}`}
-            onClick={() => setActiveFilter('all')}
-          >
-            All Applications ({applications.length})
-          </button>
-          <button 
-            className={`filter-tab ${activeFilter === 'healthy' ? 'active' : ''}`}
-            onClick={() => setActiveFilter('healthy')}
-          >
-            ● Ready ({applications.filter(a => a.state === 'HEALTHY' || a.state === 'RUNNING').length})
-          </button>
-          <button 
-            className={`filter-tab ${activeFilter === 'hibernated' ? 'active' : ''}`}
-            onClick={() => setActiveFilter('hibernated')}
-          >
-            ○ Sleeping ({applications.filter(a => a.state === 'HIBERNATED').length})
-          </button>
-        </div>
-
-        <div className="filter-search">
-          <Search size={15} className="search-icon" />
-          <input 
-            type="text" 
-            placeholder="Search applications..." 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+        {/* Global Server Metrics (Admin View only) */}
+        {isAdminMode && (
+          <MetricsBar 
+            metrics={metrics} 
+            applications={applications} 
           />
-        </div>
-      </div>
+        )}
 
-      {/* Applications Grid */}
-      {filteredApps.length > 0 ? (
-        <div className="apps-grid">
+        {/* Search & Filter Bar */}
+        <div className="filter-search-strip">
+          <div className="search-box">
+            <Search size={16} />
+            <input 
+              type="text"
+              placeholder="Search applications by name, category, or features..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+          </div>
+
+          <div className="filter-pills">
+            <button 
+              className={`filter-pill ${activeFilter === 'all' ? 'active' : ''}`}
+              onClick={() => setActiveFilter('all')}
+            >
+              All Apps ({applications.length})
+            </button>
+            <button 
+              className={`filter-pill ${activeFilter === 'running' ? 'active' : ''}`}
+              onClick={() => setActiveFilter('running')}
+            >
+              Online ({applications.filter(a => a.state === 'HEALTHY' || a.state === 'RUNNING' || a.state === 'ONLINE').length})
+            </button>
+            <button 
+              className={`filter-pill ${activeFilter === 'hibernated' ? 'active' : ''}`}
+              onClick={() => setActiveFilter('hibernated')}
+            >
+              Sleeping ({applications.filter(a => a.state === 'HIBERNATED').length})
+            </button>
+          </div>
+        </div>
+
+        {/* Applications Grid */}
+        <main className="apps-grid">
           {filteredApps.map(app => (
             <AppCard 
               key={app.id}
@@ -241,43 +326,54 @@ export default function App() {
               onStart={handleStart}
               onStop={handleStopRequest}
               onRestart={handleRestart}
-              onViewLogs={(a) => setLogModalApp(a)}
-              onOpenSettings={(a) => setSettingsModalApp(a)}
-              onOpenStartupModal={(a) => setStartupModalApp(a)}
+              onViewLogs={handleViewLogs}
+              onOpenSettings={handleOpenSettings}
+              onOpenStartupModal={(targetApp) => {
+                setStartupModalApp(targetApp);
+              }}
             />
           ))}
-        </div>
-      ) : (
-        <div style={{
-          textAlign: 'center',
-          padding: '60px 20px',
-          background: 'var(--bg-card)',
-          borderRadius: 'var(--radius-lg)',
-          border: '1px dashed var(--border-subtle)'
-        }}>
-          <Layers size={36} style={{ color: 'var(--text-muted)', marginBottom: '12px' }} />
-          <h3 style={{ fontSize: '1.1rem', marginBottom: '6px' }}>No applications found</h3>
-          <p style={{ fontSize: '0.84rem', color: 'var(--text-secondary)' }}>
-            Try adjusting your search query.
-          </p>
-        </div>
-      )}
+
+          {filteredApps.length === 0 && (
+            <div className="empty-state">
+              <Layers size={48} />
+              <h3>No matching applications found</h3>
+              <p>Try refining your search query or reset active filters.</p>
+              <button 
+                className="btn btn-outline" 
+                onClick={() => { setSearchQuery(''); setActiveFilter('all'); }}
+              >
+                Reset Filters
+              </button>
+            </div>
+          )}
+        </main>
+      </div>
+
+      {/* Admin Password Authentication Modal */}
+      <AdminAuthModal 
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        onSuccess={handleAdminAuthSuccess}
+      />
 
       {/* Modals */}
       {startupModalApp && (
         <StartupModal 
           app={startupModalApp}
-          startupProgress={startupProgress}
-          onClose={() => setStartupModalApp(null)}
-          onLaunch={() => setStartupModalApp(null)}
+          progress={startupProgress}
+          onClose={() => {
+            setStartupModalApp(null);
+            setStartupProgress(null);
+          }}
         />
       )}
 
       {stopConfirmApp && (
         <StopConfirmModal 
           app={stopConfirmApp}
+          onConfirm={(force) => handleStopConfirm(stopConfirmApp, force)}
           onClose={() => setStopConfirmApp(null)}
-          onConfirm={handleStopConfirm}
         />
       )}
 
@@ -291,14 +387,23 @@ export default function App() {
       {settingsModalApp && (
         <SettingsModal 
           app={settingsModalApp}
+          onSave={() => loadData(false)}
           onClose={() => setSettingsModalApp(null)}
-          onUpdated={() => loadData(false)}
-          onShowToast={addToast}
+          onToast={addToast}
         />
       )}
 
-      {/* Floating Toasts */}
-      <Toast toasts={toasts} onDismiss={removeToast} />
+      {/* Toast Notifications */}
+      <div className="toast-container">
+        {toasts.map(toast => (
+          <Toast 
+            key={toast.id}
+            message={toast.message}
+            type={toast.type}
+            onClose={() => removeToast(toast.id)}
+          />
+        ))}
+      </div>
     </div>
   );
 }
